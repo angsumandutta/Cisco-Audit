@@ -1,28 +1,17 @@
 package com.databuck.ExecuteCiscoJobs;
 
-import java.awt.List;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Properties;
 
-import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.databuck.bean.AppConfig;
-//import com.databuck.processCiscojobs.ProcessCiscoJobs;
+import com.databuck.taskrunner.TaskRunnerService;
 
 @Service
 public class ExcuteJobs {
@@ -145,25 +134,29 @@ public class ExcuteJobs {
 		return status;
 }
 	
-	public boolean runCommand(String command, boolean waitForCompletion) throws Exception {
+	public boolean runCommand(String strAppId, boolean waitForCompletion) throws Exception {
 		
-		process = null;
-		boolean runStatus = false;
+		String strArrayAppId[] = new String[1]; 
+		strArrayAppId[0] = strAppId;
+		TaskRunnerService taskRunnerService = new TaskRunnerService(strArrayAppId);
 		
-		try {
-			System.out.println("Command to execute : " + command);
-			process = Runtime.getRuntime().exec(command);
-			System.out.println("");
-			if(waitForCompletion) {
-				process.waitFor(); //wait for script to execute 
-			}
-			runStatus = true;
-		} catch (Exception e1) {
-			System.out.println("\n====>Exception occurred when triggering script !!!");
-			System.out.println("Command execution failed, command : " + command);
-			runStatus = false;
-			e1.printStackTrace();
-		}
+		boolean runStatus = true;
+//		process = null;
+//		
+//		try {
+//			System.out.println("Command to execute : " + command);
+//			process = Runtime.getRuntime().exec(command);
+//			System.out.println("");
+//			if(waitForCompletion) {
+//				process.waitFor(); //wait for script to execute 
+//			}
+//			runStatus = true;
+//		} catch (Exception e1) {
+//			System.out.println("\n====>Exception occurred when triggering script !!!");
+//			System.out.println("Command execution failed, command : " + command);
+//			runStatus = false;
+//			e1.printStackTrace();
+//		}
 		return runStatus;
 	}
 	
@@ -269,7 +262,9 @@ public class ExcuteJobs {
 					singleTableRun = false;
 					String cmd = scriptLocation + "  " + RCCOUNTAPPID.get(i);
 					System.out.println("Run Record Cout Check, Command = " + cmd);
-					recordCountRunStatus = runCommand(cmd, true);
+					String appId = RCCOUNTAPPID.get(i).toString();
+					//recordCountRunStatus = runCommand(cmd, true);
+					recordCountRunStatus = runCommand(appId, true);
 					
 					String returnStatus[] = getJobStatus(RCCOUNTAPPID.get(i)).split(":");
 					if(returnStatus != null & returnStatus.length > 1) {
@@ -337,9 +332,12 @@ public class ExcuteJobs {
 			// 4. Run duplicate check – do not wait 
 			if(runNextJobs.equalsIgnoreCase("PASSED") || runNextJobs.equalsIgnoreCase("FAILED")) {
 				for(int i = 0; i < DUPLICATECHECKAPPID.size(); i++) {
-					cmd = scriptLocation + "  " + DUPLICATECHECKAPPID.get(i);  //Duplicate check
-					System.out.println("Run dup check,  DUPLICATECHECKAPPID = " + DUPLICATECHECKAPPID.get(i));
-					runCommand(cmd, true);
+//					cmd = scriptLocation + "  " + DUPLICATECHECKAPPID.get(i);  //Duplicate check
+//					System.out.println("Run dup check,  DUPLICATECHECKAPPID = " + DUPLICATECHECKAPPID.get(i));
+//					runCommand(cmd, true);
+					
+					String appId = DUPLICATECHECKAPPID.get(i).toString();
+					recordCountRunStatus = runCommand(appId, false);
 				}
 			}
 
@@ -350,21 +348,28 @@ public class ExcuteJobs {
 				for(int i = 0; i < NULLCHECKAPPID.size(); i++) {
 					cmd = scriptLocation + "  " + NULLCHECKAPPID.get(i);  //Null check
 					System.out.println("Run NullCheck,  NULLCHECKAPPID = " + NULLCHECKAPPID.get(i));
-					runCommand(cmd, true);
+					//runCommand(cmd, true);
+					
+					String appId = NULLCHECKAPPID.get(i).toString();
+					recordCountRunStatus = runCommand(appId, false);
 				}
 
 				// 5. Run all dependency check in parallel
 				for(int i = 0; i < DEPENDENCYAPPID.size(); i++) {
 					cmd = scriptLocation + "  " + DEPENDENCYAPPID.get(i);  //Dependency check
 					System.out.println("Run dependency check,  DEPENDENCYAPPID = " + DEPENDENCYAPPID.get(i));
-					runCommand(cmd, true);
+					//runCommand(cmd, true);
+					String appId = DEPENDENCYAPPID.get(i).toString();
+					recordCountRunStatus = runCommand(appId, false);
 				}
 				
 				// 6. Run dollar value checks one by one
 				for(int i = 0; i < DOLLARCHECKAPPID.size(); i++) {
 					cmd = scriptLocation + "  " + DOLLARCHECKAPPID.get(i);  //Dollar check
 					System.out.println("Run dollar value checks,  DOLLARCHECKAPPID = " + DOLLARCHECKAPPID.get(i));
-					recordCountRunStatus = runCommand(cmd, true);
+					//recordCountRunStatus = runCommand(cmd, true);
+					String appId = DOLLARCHECKAPPID.get(i).toString();
+					recordCountRunStatus = runCommand(appId, false);
 				}
 			}
 			
@@ -374,23 +379,29 @@ public class ExcuteJobs {
 				System.out.println("..... Field Matching run  ........");
 				for(int i = 0; i < FIELDMATCHING.size(); i++) {
 					tableName = fieldMachingTableNames.get(i).toLowerCase();
-					cmd = scriptLocation + "  " + FIELDMATCHING.get(i) ; 
+					//cmd = scriptLocation + "  " + FIELDMATCHING.get(i) ; 
+					String appId = FIELDMATCHING.get(i).toString();
 					
 					if(countCheckMaster && tableName.contains("-Master-".toLowerCase())) {
 						System.out.println("Field matchig run for Master, table name = " + tableName + " Command = " + cmd);
-						runCommand(cmd, true);	
+						//runCommand(cmd, true);	
+						runCommand(appId, false);
 					} else if(countCheckIncremental && tableName.contains("-Incremental-".toLowerCase())) {
 						System.out.println("Field matchig run for Incremental, table name = " + tableName + " Command = " + cmd);
-						runCommand(cmd, true);
+						//runCommand(cmd, true);
+						runCommand(appId, false);
 					} else if(countCheckUpdate && tableName.contains("-Update-".toLowerCase())) {
 						System.out.println("Field matchig run for Update, table name = " + tableName + " Command = " + cmd);
-						runCommand(cmd, true);	
+						//runCommand(cmd, true);
+						runCommand(appId, false);
 					} else if(countCheckMonthly && tableName.contains("-Monthly-".toLowerCase())) {
 						System.out.println("Field matchig run for Monthly, table name = " + tableName + " Command = " + cmd);
-						runCommand(cmd, true);	
+						//runCommand(cmd, true);	
+						runCommand(appId, false);
 					} else {
 						System.out.println("Field Matching run for other job, table name = " + tableName + " Command = " + cmd);
-						runCommand(cmd, true);	
+						//runCommand(cmd, true);	
+						runCommand(appId, false);
 					}
 				}
 			}
